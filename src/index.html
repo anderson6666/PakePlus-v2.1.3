@@ -121,9 +121,6 @@
                 <button id="saveConfigBtn" class="btn-primary">
                     <i class="fa fa-save mr-2"></i>保存配置
                 </button>
-                <button id="useLocalModeBtn" class="btn-secondary">
-                    <i class="fa fa-desktop mr-2"></i>切换到本地模式
-                </button>
             </div>
         </div>
 
@@ -349,7 +346,18 @@
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
+                    const errorMessage = errorData.error?.message || '未知错误';
+                    
+                    // 检查是否是模型调用过多导致的失败
+                    if (errorMessage.includes('rate limit') || errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('调用次数') || errorMessage.includes('超出配额')) {
+                        showNotification(`API调用失败：${errorMessage}，请稍后再试。`, 'error');
+                        hideLoading();
+                        updateStatus('API调用失败，请稍后再试');
+                        isGenerating = false;
+                        return null; // 返回null表示需要退出生成
+                    }
+                    
+                    throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorMessage}`);
                 }
 
                 const result = await response.json();
@@ -385,6 +393,7 @@
                 apiConfig.apiKey = apiKey;
 
                 const response = await callAIAPI(testMessages, 0.1);
+                if (!response) return; // 如果API调用失败且需要退出生成，则直接返回
                 
                 if (response.includes('API连接成功')) {
                     showNotification('API连接成功！', 'success');
@@ -485,6 +494,7 @@
                 ];
 
                 const response = await callAIAPI(messages, 0.8);
+                if (!response) return; // 如果API调用失败且需要退出生成，则直接返回
                 console.log('API响应:', response);
                 
                 // 清理响应内容，移除可能的Markdown格式
@@ -587,6 +597,7 @@
                 ];
 
                 const answer = await callAIAPI(messages, 0.7);
+                if (!answer) return; // 如果API调用失败且需要退出生成，则直接返回
                 currentNode.answer = answer;
                 
                 const formattedAnswer = `
@@ -716,6 +727,7 @@ ${currentNode.answer}`;
                 ];
 
                 const newKeyword = await callAIAPI(messages, 0.5);
+                if (!newKeyword) return; // 如果API调用失败且需要退出生成，则直接返回
                 
                 document.getElementById('keywordInput').value = newKeyword;
                 await generateAssociation();
@@ -774,13 +786,6 @@ ${currentNode.answer}`;
             showNotification("思考记录已导出！", 'success');
         }
 
-        // 切换到本地模式
-        function switchToLocalMode() {
-            if (confirm('确定要切换到本地模式吗？本地模式无需API Key，但生成质量可能较低。')) {
-                window.location.href = '../ai-thought-tool-local/index.html';
-            }
-        }
-
         // 工具函数：数组洗牌
         function shuffleArray(array) {
             const shuffled = [...array];
@@ -796,7 +801,6 @@ ${currentNode.answer}`;
             // API配置相关
             document.getElementById('testApiBtn').addEventListener('click', testAPIConnection);
             document.getElementById('saveConfigBtn').addEventListener('click', saveAPIConfig);
-            document.getElementById('useLocalModeBtn').addEventListener('click', switchToLocalMode);
             
             // 主要功能按钮
             document.getElementById('generateBtn').addEventListener('click', generateAssociation);
