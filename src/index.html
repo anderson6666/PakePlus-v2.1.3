@@ -735,6 +735,10 @@ ${currentNode.answer}`;
             } catch (error) {
                 showNotification(`提取关键词失败：${error.message}`, 'error');
                 console.error("提取关键词失败:", error);
+            } finally {
+                hideLoading();
+                updateStatus("就绪");
+                isGenerating = false;
             }
         }
 
