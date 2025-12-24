@@ -1,0 +1,30 @@
+{
+  "name": "keyword-association-tool",
+  "version": "1.0.0",
+  "description": "AI关键词无限迭代思考工具",
+  "main": "main.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . --out=dist --overwrite --platform=win32 --arch=x64 --electron-version=39.2.7",
+    "start:server": "node server.js",
+    "build:pkg": "pkg . -t win-x64 --output keyword-tool.exe"
+  },
+  "keywords": [
+    "ai",
+    "keyword",
+    "association"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "pkg": {
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "devDependencies": {
+    "electron-packager": "^17.1.2"
+  }
+}
