@@ -1,32 +1,862 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI关键词无限迭代思考工具 - 在线API版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8b5cf6',
+                        secondary: '#64748b',
+                        accent: '#d946ef',
+                        neutral: '#f8fafc',
+                        dark: '#1e293b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-effect {
+                @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+            }
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+            }
+            .btn-accent {
+                @apply bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+            }
+            .input-primary {
+                @apply border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+            }
+            .tree-item {
+                @apply cursor-pointer hover:bg-purple-50 rounded-md px-2 py-1 transition-colors duration-200;
+            }
+            .tree-item-active {
+                @apply bg-purple-100 text-primary font-medium;
+            }
+            .gradient-bg {
+                @apply bg-gradient-to-br from-purple-50 via-indigo-50 to-pink-50;
+            }
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-pulse-slow {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- 头部 -->
+        <header class="glass-effect rounded-2xl p-6 mb-8 animate-fade-in">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-dark mb-2">AI关键词无限迭代思考工具</h1>
+                    <p class="text-gray-600">在线API版 - 使用智谱AI GLM-4.5-Flash模型</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span id="modeIndicator" class="text-sm bg-purple-100 text-purple-800 px-3 py-1 rounded-full">
+                        <i class="fa fa-cloud mr-1"></i>在线模式
+                    </span>
+                </div>
+            </div>
+        </header>
 
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
+        <!-- API配置区域 -->
+        <div id="apiConfigSection" class="glass-effect rounded-2xl p-6 mb-8 animate-fade-in">
+            <div class="flex items-center mb-4">
+                <i class="fa fa-cog text-primary text-xl mr-3"></i>
+                <h2 class="text-xl font-semibold text-dark">API配置</h2>
             </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" id="apiKeyInput" 
+                           class="input-primary w-full" 
+                           placeholder="请输入智谱AI的API Key" 
+                           value="51c15828b27c95b2425174090f723385.Hm3GpLz1z9dN8tQ2">
+                    <p class="mt-1 text-xs text-gray-500">
+                        <i class="fa fa-info-circle mr-1"></i>
+                        提示：这是一个示例Key，可能已过期。请前往 <a href="https://bigmodel.cn/usercenter/proj-mgmt/apikeys" target="_blank" class="text-primary hover:underline">智谱AI官网</a> 注册获取自己的API Key
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
+                    <input type="text" id="baseUrlInput" 
+                           class="input-primary w-full" 
+                           value="https://open.bigmodel.cn/api/paas/v4" 
+                           readonly>
+                    <p class="mt-1 text-xs text-gray-500">
+                        <i class="fa fa-check-circle mr-1"></i>
+                        智谱AI的OpenAI兼容接口地址
+                    </p>
+                </div>
             </div>
-        </main>
-    </body>
+            <div class="mt-4 flex space-x-3">
+                <button id="testApiBtn" class="btn-accent">
+                    <i class="fa fa-test-tube mr-2"></i>测试API连接
+                </button>
+                <button id="saveConfigBtn" class="btn-primary">
+                    <i class="fa fa-save mr-2"></i>保存配置
+                </button>
+                <button id="useLocalModeBtn" class="btn-secondary">
+                    <i class="fa fa-desktop mr-2"></i>切换到本地模式
+                </button>
+            </div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- 左侧控制面板 -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- 关键词输入区域 -->
+                <div class="glass-effect rounded-2xl p-6 animate-fade-in" style="animation-delay: 0.1s;">
+                    <div class="flex items-center mb-4">
+                        <i class="fa fa-keyboard-o text-primary text-xl mr-3"></i>
+                        <h2 class="text-xl font-semibold text-dark">关键词输入</h2>
+                    </div>
+                    <div class="flex space-x-3">
+                        <input type="text" id="keywordInput" 
+                               class="input-primary flex-1" 
+                               placeholder="输入核心关键词..." 
+                               maxlength="50">
+                        <button id="generateBtn" class="btn-primary" disabled>
+                            <i class="fa fa-magic mr-2"></i>生成
+                        </button>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-500">
+                        <i class="fa fa-info-circle mr-1"></i>
+                        提示：请先配置并测试API连接
+                    </div>
+                </div>
+
+                <!-- 联想框架展示区域 -->
+                <div class="glass-effect rounded-2xl p-6 animate-fade-in" style="animation-delay: 0.2s;">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <i class="fa fa-sitemap text-primary text-xl mr-3"></i>
+                            <h2 class="text-xl font-semibold text-dark">联想思考框架</h2>
+                        </div>
+                        <div class="text-sm text-gray-500" id="nodeCount">0个维度</div>
+                    </div>
+                    <div class="h-[500px] overflow-y-auto pr-2" id="associationTree">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fa fa-lightbulb-o text-4xl mb-3 animate-pulse-slow"></i>
+                            <p>请先配置API并输入关键词</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧回答区域 -->
+            <div class="lg:col-span-2">
+                <div class="glass-effect rounded-2xl p-6 h-[600px] flex flex-col animate-fade-in" style="animation-delay: 0.3s;">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <i class="fa fa-comments-o text-primary text-xl mr-3"></i>
+                            <h2 class="text-xl font-semibold text-dark">AI深度回答</h2>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="copyBtn" class="text-gray-500 hover:text-primary transition-colors" title="复制回答" disabled>
+                                <i class="fa fa-copy"></i>
+                            </button>
+                            <button id="exportBtn" class="text-gray-500 hover:text-primary transition-colors" title="导出思考" disabled>
+                                <i class="fa fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 bg-white/50 rounded-xl p-6 overflow-y-auto mb-4" id="answerContent">
+                        <div class="text-center text-gray-500 py-16">
+                            <i class="fa fa-book text-5xl mb-4 animate-pulse-slow"></i>
+                            <p class="text-lg">请先配置API并选择思考维度</p>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex justify-between items-center">
+                        <div class="flex space-x-3">
+                            <button id="backBtn" class="btn-secondary opacity-50 cursor-not-allowed" disabled>
+                                <i class="fa fa-arrow-left mr-2"></i>返回上一级
+                            </button>
+                            <button id="extractBtn" class="btn-primary opacity-50 cursor-not-allowed" disabled>
+                                <i class="fa fa-refresh mr-2"></i>提取新关键词
+                            </button>
+                        </div>
+                        <div class="text-sm text-gray-500" id="statusInfo">
+                            等待API配置
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部信息 -->
+        <footer class="mt-8 text-center text-gray-500 text-sm animate-fade-in">
+            <p>💡 在线API版 - 使用智谱AI GLM-4.5-Flash模型 | 支持OpenAI兼容接口</p>
+        </footer>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="glass-effect rounded-2xl p-8 text-center">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+            <p class="text-lg font-medium" id="loadingText">正在生成中...</p>
+        </div>
+    </div>
+
+    <!-- 快捷关键词建议 -->
+    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 glass-effect rounded-full px-6 py-3 shadow-lg animate-fade-in" style="animation-delay: 0.5s;">
+        <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-600">快速开始：</span>
+            <div class="flex space-x-2">
+                <button class="quick-keyword px-3 py-1 text-sm bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-full transition-colors" disabled>人工智能</button>
+                <button class="quick-keyword px-3 py-1 text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-full transition-colors" disabled>编程学习</button>
+                <button class="quick-keyword px-3 py-1 text-sm bg-pink-100 hover:bg-pink-200 text-pink-800 rounded-full transition-colors" disabled>创新思维</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentNode = null;
+        let thoughtHistory = [];
+        let currentTreeData = {};
+        let isGenerating = false;
+        let apiConfig = {
+            apiKey: '',
+            baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+            model: 'glm-4.5-flash',
+            isConfigured: false
+        };
+
+        // 预设的思考维度模板
+        const DEFAULT_DIMENSIONS = [
+            "概念解析", "历史发展", "核心原理", "应用场景", "未来趋势", 
+            "优缺点分析", "相关技术", "学习路径", "实践案例", "影响评估"
+        ];
+
+        // 预设的细分方向模板
+        const DEFAULT_SUBDIMENSIONS = {
+            "概念解析": ["定义与内涵", "关键特征", "分类体系", "相关概念对比"],
+            "历史发展": ["起源背景", "发展阶段", "重要里程碑", "代表人物"],
+            "核心原理": ["基本原理", "技术架构", "工作机制", "关键算法"],
+            "应用场景": ["行业应用", "典型案例", "用户价值", "实施挑战"],
+            "未来趋势": ["技术演进", "发展方向", "潜在机会", "可能风险"],
+            "优缺点分析": ["主要优势", "局限性", "改进空间", "竞争对比"],
+            "相关技术": ["关联技术", "技术栈", "集成方案", "替代方案"],
+            "学习路径": ["入门指南", "学习资源", "实践项目", "能力提升"],
+            "实践案例": ["成功案例", "失败教训", "经验总结", "最佳实践"],
+            "影响评估": ["社会影响", "经济影响", "环境影响", "伦理考量"]
+        };
+
+        // 显示加载动画
+        function showLoading(text = "正在生成中...") {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        // 隐藏加载动画
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // 显示提示信息
+        function showNotification(message, type = 'info', duration = 3000) {
+            const notificationDiv = document.createElement('div');
+            const colors = {
+                'info': 'bg-blue-500',
+                'success': 'bg-green-500',
+                'warning': 'bg-yellow-500',
+                'error': 'bg-red-500'
+            };
+            const icons = {
+                'info': 'fa-info-circle',
+                'success': 'fa-check-circle',
+                'warning': 'fa-exclamation-triangle',
+                'error': 'fa-exclamation-circle'
+            };
+
+            notificationDiv.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+            notificationDiv.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fa ${icons[type]} mr-3"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notificationDiv);
+            
+            // 显示动画
+            setTimeout(() => {
+                notificationDiv.classList.remove('translate-x-full');
+            }, 100);
+            
+            // 自动隐藏
+            setTimeout(() => {
+                notificationDiv.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notificationDiv);
+                }, 300);
+            }, duration);
+        }
+
+        // 调用AI API
+        async function callAIAPI(messages, temperature = 0.7) {
+            if (!apiConfig.apiKey || !apiConfig.baseUrl) {
+                throw new Error('API配置不完整');
+            }
+
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiConfig.apiKey}`
+            };
+
+            const data = {
+                model: apiConfig.model,
+                messages: messages,
+                temperature: temperature,
+                max_tokens: 2048
+            };
+
+            try {
+                const response = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(`API调用失败: ${response.status} ${response.statusText} - ${errorData.error?.message || '未知错误'}`);
+                }
+
+                const result = await response.json();
+                if (result.choices && result.choices.length > 0) {
+                    return result.choices[0].message.content.trim();
+                } else {
+                    throw new Error('API返回格式错误');
+                }
+            } catch (error) {
+                throw new Error(`API调用失败: ${error.message}`);
+            }
+        }
+
+        // 测试API连接
+        async function testAPIConnection() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                showNotification('请输入API Key！', 'warning');
+                return;
+            }
+
+            showLoading('正在测试API连接...');
+            updateStatus('测试API连接中...');
+
+            try {
+                const testMessages = [
+                    { role: 'system', content: '你是一个AI助手，请用简洁的语言回答问题。' },
+                    { role: 'user', content: '测试连接，请返回"API连接成功"。' }
+                ];
+
+                // 临时使用输入的API Key进行测试
+                const originalApiKey = apiConfig.apiKey;
+                apiConfig.apiKey = apiKey;
+
+                const response = await callAIAPI(testMessages, 0.1);
+                
+                if (response.includes('API连接成功')) {
+                    showNotification('API连接成功！', 'success');
+                    apiConfig.isConfigured = true;
+                    enableAllFeatures();
+                } else {
+                    throw new Error('API返回内容不符合预期');
+                }
+            } catch (error) {
+                showNotification(`API连接失败：${error.message}`, 'error');
+                console.error('API测试失败:', error);
+            } finally {
+                hideLoading();
+                updateStatus('就绪');
+            }
+        }
+
+        // 保存API配置
+        function saveAPIConfig() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const baseUrl = document.getElementById('baseUrlInput').value.trim();
+
+            if (!apiKey || !baseUrl) {
+                showNotification('请填写完整的API配置！', 'warning');
+                return;
+            }
+
+            apiConfig.apiKey = apiKey;
+            apiConfig.baseUrl = baseUrl;
+
+            // 保存到localStorage
+            localStorage.setItem('aiThoughtToolApiConfig', JSON.stringify(apiConfig));
+
+            showNotification('API配置已保存！', 'success');
+        }
+
+        // 加载API配置
+        function loadAPIConfig() {
+            const savedConfig = localStorage.getItem('aiThoughtToolApiConfig');
+            if (savedConfig) {
+                try {
+                    const config = JSON.parse(savedConfig);
+                    apiConfig = { ...apiConfig, ...config };
+                    
+                    document.getElementById('apiKeyInput').value = apiConfig.apiKey || '';
+                    document.getElementById('baseUrlInput').value = apiConfig.baseUrl || 'https://open.bigmodel.cn/api/paas/v4';
+
+                    if (apiConfig.isConfigured) {
+                        enableAllFeatures();
+                        showNotification('已加载保存的API配置', 'info');
+                    }
+                } catch (error) {
+                    console.error('加载API配置失败:', error);
+                }
+            }
+        }
+
+        // 启用所有功能
+        function enableAllFeatures() {
+            document.getElementById('generateBtn').disabled = false;
+            document.getElementById('copyBtn').disabled = false;
+            document.getElementById('exportBtn').disabled = false;
+            
+            document.querySelectorAll('.quick-keyword').forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+
+            document.getElementById('apiConfigSection').classList.add('opacity-80');
+            updateStatus('API已配置，就绪');
+        }
+
+        // 生成联想框架
+        async function generateAssociation() {
+            const keyword = document.getElementById('keywordInput').value.trim();
+            if (!keyword) {
+                showNotification("请输入核心关键词！", 'warning');
+                return;
+            }
+
+            if (isGenerating) return;
+            isGenerating = true;
+
+            showLoading("正在生成联想框架...");
+            updateStatus("正在生成联想框架...");
+
+            try {
+                // 使用AI生成联想框架
+                const prompt = `你是一个深度思考助手，请为关键词"${keyword}"生成一个结构化的联想思考框架。框架应该包含5-8个核心思考维度，每个维度下有3-4个细分思考方向。请以JSON格式输出，例如：
+{
+  "概念解析": ["定义与内涵", "历史沿革", "核心特征", "相关概念对比"],
+  "理论框架": ["基础理论", "发展流派", "研究方法", "应用模型"]
+}`;
+
+                const messages = [
+                    { role: 'system', content: '你是一个专业的思考框架生成助手，擅长为各种主题创建结构化的思考维度。' },
+                    { role: 'user', content: prompt }
+                ];
+
+                const response = await callAIAPI(messages, 0.8);
+                console.log('API响应:', response);
+                
+                // 清理响应内容，移除可能的Markdown格式
+                let cleanResponse = response.trim();
+                if (cleanResponse.startsWith('```json')) {
+                    cleanResponse = cleanResponse.substring(7);
+                }
+                if (cleanResponse.endsWith('```')) {
+                    cleanResponse = cleanResponse.substring(0, cleanResponse.length - 3);
+                }
+                cleanResponse = cleanResponse.trim();
+                
+                console.log('清理后的响应:', cleanResponse);
+                
+                const associationFrame = JSON.parse(cleanResponse);
+                currentTreeData = associationFrame;
+                
+                // 更新当前节点
+                currentNode = {
+                    keyword: keyword,
+                    associationFrame: associationFrame,
+                    answer: "",
+                    children: {}
+                };
+                
+                thoughtHistory.push(currentNode);
+                updateNavigationButtons();
+                renderTree(associationFrame);
+                
+                updateAnswer(`✅ 已生成「${keyword}」的联想框架\n\n点击左侧节点可生成对应深度回答`);
+                updateNodeCount(Object.keys(associationFrame).length);
+                
+                showNotification(`成功生成「${keyword}」的联想框架`, 'success');
+                
+            } catch (error) {
+                showNotification(`生成失败：${error.message}`, 'error');
+                console.error("生成联想框架失败:", error);
+            } finally {
+                hideLoading();
+                updateStatus("就绪");
+                isGenerating = false;
+            }
+        }
+
+        // 渲染树结构
+        function renderTree(data) {
+            const treeContainer = document.getElementById('associationTree');
+            treeContainer.innerHTML = '';
+
+            Object.entries(data).forEach(([mainTopic, subTopics]) => {
+                const mainNode = document.createElement('div');
+                mainNode.className = 'mb-4';
+                
+                const mainTitle = document.createElement('div');
+                mainTitle.className = 'tree-item flex items-center font-medium text-gray-800';
+                mainTitle.innerHTML = `
+                    <i class="fa fa-folder text-primary mr-2"></i>
+                    <span>${mainTopic}</span>
+                `;
+                mainTitle.onclick = () => generateAnswer(mainTopic);
+                
+                const subNodes = document.createElement('div');
+                subNodes.className = 'ml-6 mt-2 space-y-1';
+                
+                subTopics.forEach(subTopic => {
+                    const subNode = document.createElement('div');
+                    subNode.className = 'tree-item flex items-center text-gray-600';
+                    subNode.innerHTML = `
+                        <i class="fa fa-file-text-o text-secondary mr-2"></i>
+                        <span>${subTopic}</span>
+                    `;
+                    subNode.onclick = () => generateAnswer(mainTopic, subTopic);
+                    subNodes.appendChild(subNode);
+                });
+                
+                mainNode.appendChild(mainTitle);
+                mainNode.appendChild(subNodes);
+                treeContainer.appendChild(mainNode);
+            });
+        }
+
+        // 生成回答
+        async function generateAnswer(mainTopic, subTopic = null) {
+            if (!currentNode || isGenerating) return;
+            isGenerating = true;
+
+            const fullTopic = subTopic ? `${mainTopic} > ${subTopic}` : mainTopic;
+            showLoading(`正在生成「${fullTopic}」的深度回答...`);
+            updateStatus(`生成中...`);
+
+            try {
+                // 使用AI生成深度回答
+                const prompt = subTopic 
+                    ? `请围绕关键词"${currentNode.keyword}"的"${mainTopic}"维度中的"${subTopic}"方向进行深度分析。回答需要逻辑清晰，分点论述，包含核心信息，语言通俗易懂。结尾请提出1-2个可继续迭代思考的新关键词。`
+                    : `请围绕关键词"${currentNode.keyword}"的"${mainTopic}"维度进行深度分析。回答需要逻辑清晰，分点论述，包含核心信息，语言通俗易懂。结尾请提出1-2个可继续迭代思考的新关键词。`;
+
+                const messages = [
+                    { role: 'system', content: '你是一个深度思考助手，擅长对各种主题进行深入分析和阐述。' },
+                    { role: 'user', content: prompt }
+                ];
+
+                const answer = await callAIAPI(messages, 0.7);
+                currentNode.answer = answer;
+                
+                const formattedAnswer = `
+                    <div class="space-y-4 animate-fade-in">
+                        <div class="bg-purple-50 border-l-4 border-primary p-4 rounded-r-lg">
+                            <h3 class="font-semibold text-gray-800">📌 思考主题：${currentNode.keyword} > ${fullTopic}</h3>
+                        </div>
+                        <div class="prose max-w-none">
+                            ${formatMarkdown(answer)}
+                        </div>
+                    </div>
+                `;
+                
+                updateAnswer(formattedAnswer);
+                document.getElementById('extractBtn').disabled = false;
+                document.getElementById('extractBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                showNotification(`成功生成「${fullTopic}」的深度回答`, 'success');
+                
+            } catch (error) {
+                showNotification(`生成回答失败：${error.message}`, 'error');
+                console.error("生成回答失败:", error);
+            } finally {
+                hideLoading();
+                updateStatus("就绪");
+                isGenerating = false;
+            }
+        }
+
+        // 格式化Markdown文本
+        function formatMarkdown(text) {
+            return text
+                .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4 text-gray-800">$1</h1>')
+                .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mb-3 text-gray-800">$1</h2>')
+                .replace(/^### (.*$)/gm, '<h3 class="text-lg font-medium mb-2 text-gray-700">$1</h3>')
+                .replace(/^\- \*\*(.*?)\*\*(.*$)/gm, '<li class="list-disc ml-6 mb-1"><strong>$1</strong>$2</li>')
+                .replace(/^\- (.*$)/gm, '<li class="list-disc ml-6 mb-1">$1</li>')
+                .replace(/^\d\. (.*$)/gm, '<li class="list-decimal ml-6 mb-1">$1</li>')
+                .replace(/\n\n/g, '</ul>\n\n<ul class="space-y-1">')
+                .replace(/(<li>.*<\/li>)/g, '$1')
+                .replace(/<\/ul>\n\n<ul class="space-y-1">/g, '</ul>\n<p class="mb-4"></p>\n<ul class="space-y-1">')
+                .replace(/<\/ul>\s*<ul class="space-y-1">/g, '')
+                .replace(/<p class="mb-4"><\/p>/g, '<p class="mb-4"></p>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+        }
+
+        // 更新回答内容
+        function updateAnswer(content) {
+            const answerContent = document.getElementById('answerContent');
+            if (typeof content === 'string' && content.includes('✅')) {
+                answerContent.innerHTML = `
+                    <div class="text-center text-green-600 py-8 animate-fade-in">
+                        <i class="fa fa-check-circle text-4xl mb-3"></i>
+                        <p class="text-lg">${content}</p>
+                    </div>
+                `;
+            } else {
+                answerContent.innerHTML = content;
+            }
+        }
+
+        // 更新导航按钮状态
+        function updateNavigationButtons() {
+            const backBtn = document.getElementById('backBtn');
+            if (thoughtHistory.length > 1) {
+                backBtn.disabled = false;
+                backBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                backBtn.disabled = true;
+                backBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // 更新节点计数
+        function updateNodeCount(count) {
+            document.getElementById('nodeCount').textContent = `${count}个维度`;
+        }
+
+        // 更新状态信息
+        function updateStatus(status) {
+            document.getElementById('statusInfo').textContent = status;
+        }
+
+        // 返回上一级思考
+        function backToPrevNode() {
+            if (thoughtHistory.length <= 1) {
+                showNotification("已回到最初的思考节点！", 'info');
+                return;
+            }
+
+            thoughtHistory.pop();
+            currentNode = thoughtHistory[thoughtHistory.length - 1];
+
+            document.getElementById('keywordInput').value = currentNode.keyword;
+            renderTree(currentNode.associationFrame);
+            updateAnswer(`✅ 当前思考节点：「${currentNode.keyword}」\n\n点击左侧节点继续深度分析`);
+
+            document.getElementById('extractBtn').disabled = true;
+            document.getElementById('extractBtn').classList.add('opacity-50', 'cursor-not-allowed');
+            
+            updateNavigationButtons();
+            updateNodeCount(Object.keys(currentNode.associationFrame).length);
+            
+            showNotification(`已返回至「${currentNode.keyword}」的思考`, 'info');
+        }
+
+        // 提取新关键词
+        async function extractNewKeyword() {
+            if (!currentNode || !currentNode.answer) {
+                showNotification("暂无回答可提取关键词！", 'warning');
+                return;
+            }
+
+            showLoading("正在提取新关键词...");
+            updateStatus("提取中...");
+
+            try {
+                // 使用AI从回答中提取新关键词
+                const prompt = `请从以下文本中提取1个最具价值的新关键词，这个关键词应该能够作为继续深入思考的起点。请只返回关键词本身，不要有任何其他内容。
+
+${currentNode.answer}`;
+
+                const messages = [
+                    { role: 'system', content: '你是一个关键词提取专家，擅长从文本中识别和提取最有价值的核心概念。' },
+                    { role: 'user', content: prompt }
+                ];
+
+                const newKeyword = await callAIAPI(messages, 0.5);
+                
+                document.getElementById('keywordInput').value = newKeyword;
+                await generateAssociation();
+                
+            } catch (error) {
+                showNotification(`提取关键词失败：${error.message}`, 'error');
+                console.error("提取关键词失败:", error);
+            }
+        }
+
+        // 复制回答内容
+        function copyAnswer() {
+            const answerContent = document.getElementById('answerContent');
+            const text = answerContent.innerText;
+            
+            if (text.includes('请先配置API并选择思考维度')) {
+                showNotification("暂无内容可复制！", 'warning');
+                return;
+            }
+            
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification("回答内容已复制到剪贴板！", 'success');
+            }).catch(() => {
+                showNotification("复制失败，请手动选择复制！", 'error');
+            });
+        }
+
+        // 导出思考记录
+        function exportThoughts() {
+            if (thoughtHistory.length === 0) {
+                showNotification("暂无思考记录可导出！", 'warning');
+                return;
+            }
+
+            const exportData = {
+                exportTime: new Date().toISOString(),
+                apiConfig: {
+                    model: apiConfig.model,
+                    baseUrl: apiConfig.baseUrl.replace(/.*?\/([^\/]+)$/, '$1') // 只保留域名部分
+                },
+                thoughtHistory: thoughtHistory.map(node => ({
+                    keyword: node.keyword,
+                    answer: node.answer,
+                    timestamp: new Date().toISOString()
+                }))
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `ai-thoughts-${Date.now()}.json`;
+            link.click();
+            
+            showNotification("思考记录已导出！", 'success');
+        }
+
+        // 切换到本地模式
+        function switchToLocalMode() {
+            if (confirm('确定要切换到本地模式吗？本地模式无需API Key，但生成质量可能较低。')) {
+                window.location.href = '../ai-thought-tool-local/index.html';
+            }
+        }
+
+        // 工具函数：数组洗牌
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // 事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            // API配置相关
+            document.getElementById('testApiBtn').addEventListener('click', testAPIConnection);
+            document.getElementById('saveConfigBtn').addEventListener('click', saveAPIConfig);
+            document.getElementById('useLocalModeBtn').addEventListener('click', switchToLocalMode);
+            
+            // 主要功能按钮
+            document.getElementById('generateBtn').addEventListener('click', generateAssociation);
+            document.getElementById('backBtn').addEventListener('click', backToPrevNode);
+            document.getElementById('extractBtn').addEventListener('click', extractNewKeyword);
+            document.getElementById('copyBtn').addEventListener('click', copyAnswer);
+            document.getElementById('exportBtn').addEventListener('click', exportThoughts);
+            
+            // 回车生成
+            document.getElementById('keywordInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !this.disabled) {
+                    generateAssociation();
+                }
+            });
+
+            // 快捷关键词
+            document.querySelectorAll('.quick-keyword').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!this.disabled) {
+                        const keyword = this.textContent;
+                        document.getElementById('keywordInput').value = keyword;
+                        generateAssociation();
+                    }
+                });
+            });
+
+            // 按钮悬停效果
+            const buttons = document.querySelectorAll('button:not(.quick-keyword)');
+            buttons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    if (!this.disabled) {
+                        this.classList.add('scale-105');
+                    }
+                });
+                
+                btn.addEventListener('mouseleave', function() {
+                    this.classList.remove('scale-105');
+                });
+            });
+
+            // 输入框聚焦效果
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.classList.add('scale-102');
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.classList.remove('scale-102');
+                });
+            });
+
+            // 加载保存的配置
+            loadAPIConfig();
+
+            // 显示欢迎信息
+            setTimeout(() => {
+                showNotification("欢迎使用AI关键词思考工具在线版！请先配置API Key以开始使用。", 'info', 5000);
+            }, 1000);
+        });
+    </script>
+</body>
 </html>
